@@ -33,6 +33,34 @@ Example packet:
 /// ID of a sensor or actor in the network.
 struct enocean_id
 {
+  void set(uint8_t a, uint8_t b, uint8_t c, uint8_t d) noexcept
+  {
+    addr[0] = a;
+    addr[1] = b;
+    addr[2] = c;
+    addr[3] = d;
+  }
+
+  uint32_t raw() const noexcept
+  {
+    return *reinterpret_cast<const uint32_t*>(this);
+  }
+
+  friend bool operator<(const enocean_id& l, const enocean_id& r) noexcept
+  {
+    return l.raw() < r.raw();
+  }
+
+  friend bool operator==(const enocean_id& l, const enocean_id& r) noexcept
+  {
+    return l.raw() == r.raw();
+  }
+
+  friend bool operator!=(const enocean_id& l, const enocean_id& r) noexcept
+  {
+    return l.raw() != r.raw();
+  }
+
   uint8_t addr[4];
 };
 
@@ -84,7 +112,7 @@ struct enocean_switch_event
    *
    * @return 0 if no button or released, 1-4 for single-press and 5-8 for two-button press.
    */
-  uint8_t button_id() const noexcept
+  int8_t button_id() const noexcept
   {
     switch (button_state)
     {
