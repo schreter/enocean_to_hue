@@ -13,14 +13,29 @@ command_mapping::command_mapping()
 
 int32_t command_mapping::map(const enocean_event& e)
 {
-  if (e.hdr.packet_type == enocean_packet_type::RADIO_ERP1 &&
-      e.erp1.event_type == enocean_erp1_type::SWITCH) {
-    // try the mapping
-    auto button = e.erp1.switch_event.button_id();
-    auto id = e.erp1.switch_event.sender;
-    auto i = mapping_.find(std::make_pair(id, button));
-    if (i != mapping_.end())
-      return i->second;
+  if (e.hdr.packet_type == enocean_packet_type::RADIO_ERP1) {
+    switch (e.erp1.event_type) {
+      case enocean_erp1_type::SWITCH:
+      {
+        auto button = e.erp1.switch_event.button_id();
+        auto id = e.erp1.switch_event.sender;
+        auto i = mapping_.find(std::make_pair(id, button));
+        if (i != mapping_.end())
+          return i->second;
+        break;
+      }
+      case enocean_erp1_type::CONTACT:
+      {
+        bool closed = e.erp1.contact_event.is_closed();
+        auto id = e.erp1.contact_event.sender;
+        auto i = mapping_.find(std::make_pair(id, closed ? 1 : 0));
+        if (i != mapping_.end())
+          return i->second;
+        break;
+      }
+      default:
+        break;
+    }
   }
   return 0;
 }

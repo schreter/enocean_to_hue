@@ -60,7 +60,7 @@ static void hexdump(const void* ptr, size_t size) noexcept
 void enocean_to_hue_bridge::handle_event(const enocean_event& event)
 {
   static int count = 0;
-  printf("Got event %d\a, type=%d:", ++count, int(event.hdr.packet_type));
+  printf("Got event %d, type=%d:", ++count, int(event.hdr.packet_type));
   hexdump(&event.buffer, event.hdr.total_size());
   printf("\n");
   auto value = map_.map(event);

@@ -101,9 +101,9 @@ private:
   void start_connect();
 
   /// Maximum 4 commands in the queue.
-  static inline constexpr auto MAX_QUEUE_SIZE = 4;
+  static constexpr auto MAX_QUEUE_SIZE = 4;
   /// Maximum 0.5 seconds for the bridge to accept the command.
-  static inline constexpr auto MAX_EVENT_AGE = 500000;
+  static constexpr auto MAX_EVENT_AGE = 500000;
 
   /// Remote IP address.
   const uint32_t ip_;

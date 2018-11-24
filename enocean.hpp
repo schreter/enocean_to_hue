@@ -98,7 +98,22 @@ struct enocean_header
 enum class enocean_erp1_type : uint8_t
 {
   /// 4-button rocker switches with up to 2 actions per event.
-  SWITCH = 0xf6
+  SWITCH = 0xf6,
+  /// Contact, e.g., magnetic window/door contact.
+  CONTACT = 0xd5
+};
+
+/// Subtelegram structure.
+struct enocean_subtelegram
+{
+  /// 0-based ID.
+  uint8_t subtelegram_id;
+  /// Destination, typically broadcast.
+  enocean_id destination;
+  /// Signal strenght.
+  uint8_t dbm;
+  /// Security level.
+  uint8_t security_level;
 };
 
 /// Structure of switch event.
@@ -128,19 +143,6 @@ struct enocean_switch_event
     }
   }
 
-  /// Subtelegram structure.
-  struct subtelegram
-  {
-    /// 0-based ID.
-    uint8_t subtelegram_id;
-    /// Destination, typically broadcast.
-    enocean_id destination;
-    /// Signal strenght.
-    uint8_t dbm;
-    /// Security level.
-    uint8_t security_level;
-  };
-
   /// Event type, always SWITCH.
   enocean_erp1_type event_type;
   /// Button states.
@@ -151,7 +153,26 @@ struct enocean_switch_event
   uint8_t status;
 
   /// Subtelegrams. We expect exactly one (7B of optional data).
-  subtelegram subtel[1];
+  enocean_subtelegram subtel[1];
+};
+
+/// Structure of contact event.
+struct enocean_contact_event
+{
+  /// Return @c true, if closed, @c false if open.
+  bool is_closed() const noexcept { return (contact_state & 1) != 0; }
+
+  /// Event type, always CONTACT.
+  enocean_erp1_type event_type;
+  /// Button states.
+  uint8_t contact_state;
+  /// ID of the switch.
+  enocean_id sender;
+  /// Status (0x30 pressed, 0x20 released).
+  uint8_t status;
+
+  /// Subtelegrams. We expect exactly one (7B of optional data).
+  enocean_subtelegram subtel[1];
 };
 
 /// Event structure for RADIO_ERP1
@@ -163,6 +184,8 @@ struct enocean_erp1_event
     enocean_erp1_type event_type;
     /// Event of a switch.
     enocean_switch_event switch_event;
+    /// Event of a contact.
+    enocean_contact_event contact_event;
   };
 };
 
