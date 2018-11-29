@@ -2,6 +2,7 @@
 
 #include <system_error>
 #include <poll.h>
+#include <syslog.h>
 
 enocean_to_hue_bridge::enocean_to_hue_bridge(
     const char* port,
@@ -50,20 +51,34 @@ void enocean_to_hue_bridge::handler::handle_event(const enocean_event& event)
   parent_.handle_event(event);
 }
 
-static void hexdump(const void* ptr, size_t size) noexcept
+static void hexdump(char* dest, size_t dest_rem, const void* ptr, size_t size) noexcept
 {
+  if (!size || dest_rem < 4) {
+    dest[0] = 0;
+    return;
+  }
   auto p = reinterpret_cast<const uint8_t*>(ptr);
-  while (size--)
-    printf(" %02x", *p++);
+  while (size-- && dest_rem >= 3) {
+    auto c = *p++;
+    static constexpr char hexchar[17] = "0123456789ABCDEF";
+    dest[0] = hexchar[c >> 4];
+    dest[1] = hexchar[c & 15];
+    dest[2] = ' ';
+    dest += 3;
+    dest_rem -= 3;
+  }
+  dest[-1] = 0;
 }
 
 void enocean_to_hue_bridge::handle_event(const enocean_event& event)
 {
   static int count = 0;
-  printf("Got event %d, type=%d:", ++count, int(event.hdr.packet_type));
-  hexdump(&event.buffer, event.hdr.total_size());
-  printf("\n");
+  char data[128];
+  hexdump(data, sizeof(data), &event.buffer, event.hdr.total_size());
+  syslog(LOG_INFO, "Got event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
   auto value = map_.map(event);
-  if (value)
-      cmd_.post(value);
+  if (value) {
+    syslog(LOG_INFO, "Post command: %d", value);
+    cmd_.post(value);
+  }
 }

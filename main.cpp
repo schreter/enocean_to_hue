@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <syslog.h>
 
 static int64_t timestamp() noexcept
 {
@@ -38,6 +39,9 @@ int main(int argc, const char** argv)
     }
   }
 
+  setlogmask(LOG_UPTO(LOG_INFO));
+  openlog("enocean_to_hue", LOG_CONS | LOG_PID | LOG_PERROR, LOG_LOCAL1);
+
   uint32_t respawn_cnt = 0;
   for (;;)
   {
@@ -45,25 +49,25 @@ int main(int argc, const char** argv)
     auto pid = fork();
     if (!pid) {
       // child process, run the bridge
+      openlog("enocean_to_hue", LOG_CONS | LOG_PID, LOG_LOCAL1);
       try {
         enocean_to_hue_bridge bridge(argv[1], bridge_addr.s_addr, argv[3], sensor_id, argv[5]);
         bridge.run_poll_loop();
       } catch (std::exception& e) {
-        std::cerr << "ERROR: " << e.what() << "\n";
+        syslog(LOG_ERR, "ERROR: %s", e.what());
       }
       return 1;
     }
 
     // parent process, wait for child
-    std::cout << "Started child process " << pid << '\n';
+    syslog(LOG_INFO, "Started child process %d", pid);
     int status;
     auto cpid = wait(&status);
     auto end_time = timestamp();
     auto delta = end_time - start_time;
-    std::cout << "Child process " << cpid << " exited with status " <<
-        status << " after " << delta << "ms\n";
+    syslog(LOG_ERR, "Child process %d exited with status %d after %lld ms", cpid, status, delta);
     if (pid != cpid) {
-      std::cerr << "Wrong PID " << cpid << " of terminated process, expected " << pid << '\n';
+      syslog(LOG_ERR, "Wrong PID %d of terminated process, expected %d", cpid, pid);
       return 1;
     }
 
