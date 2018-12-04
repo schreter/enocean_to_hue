@@ -63,11 +63,11 @@ void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value)
 {
   if (!value)
     throw std::runtime_error("Value must be specified");
-  if (button < -1 || button > 8)
-    throw std::runtime_error("Button ID must be in range [-1,8]");
+  if (button < -2 || button > 8)
+    throw std::runtime_error("Button ID must be in range [-2,8]");
 
-  if (button == -1) {
-    for (button = 0; button <= 8; ++button)
+  if (button < 0) {
+    for (button = ((button == -2) ? 0 : 1); button <= 8; ++button)
       add_mapping(id, button, value + button);
     return;
   }
@@ -91,8 +91,8 @@ void command_mapping::load(const char* filename)
       throw std::runtime_error("Expected line in form XX:XX:XX:XX # #####");
     if (a > 255 || b > 255 || c > 255 || d > 255)
       throw std::runtime_error("ID must contain only hexadecimal values up to 0xff");
-    if (button < -1 || button > 8)
-      throw std::runtime_error("Button ID must be in range [-1,8]");
+    if (button < -2 || button > 8)
+      throw std::runtime_error("Button ID must be in range [-2,8]");
     enocean_id id;
     id.set(uint8_t(a), uint8_t(b), uint8_t(c), uint8_t(d));
     add_mapping(id, int8_t(button), value);

@@ -24,9 +24,25 @@ The mapping file is parsed as text lines:
    - empty lines are ignored
    - `<device id> <button> <state>` - set a mapping for a device's button
 
+Button numbers:
+   - 0 - release of a button
+   - 1 - top-left button
+   - 2 - bottom-left button
+   - 3 - top-right button
+   - 4 - bottom-right button
+   - 5 - simultaneous press of both top buttons or top button of a single-rocker
+   - 6 - simultaneous press of both bottom buttons or bottom button of a single-rocker
+   - 7 - simultaneous press of top-left and bottom-right button
+   - 8 - simultaneous press of top-right and bottom-left button
+
+The mapping can also contain special button numbers:
+   - -1 to map all button numbers 1-8 to specified value + button number
+   - -2 to map all button numbers 0-8 (i.e., also button release event)
+     to specified value + button number
+
 Example mapping file:
 ```
-# living room switch - map buttons 1-8 to 11-18 and release to 10
+# living room switch - map buttons 1-8 to 11-18
 fe:f2:37:a3 -1 10
 
 # switch kitchen - explicit mapping of buttons
@@ -36,7 +52,7 @@ fe:f2:37:88 3 23
 fe:f2:37:88 1 24
 
 # office switch - map buttons 1-8 to 31-38 and release to 30
-fe:f1:7b:67 -1 30
+fe:f1:7b:67 -2 30
 
 # bathroom door contact
 01:c5:e2:89 0 1000	# open
