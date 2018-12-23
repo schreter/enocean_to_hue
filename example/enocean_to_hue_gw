@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# Example init.d script for the gateway
+
+DAEMON=/usr/bin/enocean_to_hue
+NAME=enocean_to_hue
+DESC="Enocean to Philips Hue gateway"
+PORT="/dev/ttyUSB_USB300"
+BRIDGE="xxx"
+API_KEY="xxx"
+SENSOR_ID=##
+MAPPING="/etc/enocean_to_hue.conf"
+ARGS="$PORT $BRIDGE $API_KEY $SENSOR_ID $MAPPING"
+
+test -f $DAEMON || exit 0
+
+set -e
+
+case "$1" in
+    start)
+        echo -n "starting $DESC: $NAME... "
+	start-stop-daemon -S -b -n $NAME -a $DAEMON -- $ARGS
+	echo "done."
+	;;
+    stop)
+        echo -n "stopping $DESC: $NAME... "
+	start-stop-daemon -K -n $NAME
+	echo "done."
+	;;
+    restart)
+        echo -n "restarting $DESC: $NAME... "
+ 	$0 stop
+	$0 start
+	echo "done."
+	;;
+    *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+	;;
+esac
+
+exit 0
