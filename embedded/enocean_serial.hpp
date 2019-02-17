@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "enocean.hpp"
+
 #include <cstdint>
 
 /*!
@@ -32,20 +33,14 @@
 class enocean_serial
 {
 public:
-  /*!
-   * @brief Initialize serial port and return file descriptor.
-   *
-   * @param device_path path to the special file representing serial device.
-   */
-  explicit enocean_serial(const char* device_path);
-
   virtual ~enocean_serial() noexcept;
 
-  /// Return file descriptor to poll on.
-  int get_fd() const noexcept { return fd_; }
-
   /// Handle any received data by pushing them to event state machine.
-  void poll();
+  virtual void poll() = 0;
+
+protected:
+  /// Push a byte to process.
+  void push(uint8_t b);
 
 private:
   /// Receiver state.
@@ -64,14 +59,8 @@ private:
    */
   virtual void handle_event(const enocean_event& event) = 0;
 
-  /// Push a byte to process.
-  void push(uint8_t b);
-
   /// Event to fill.
   enocean_event event_;
-
-  /// Underlying file descriptor.
-  int fd_ = -1;
 
   /// Current processing state.
   state state_ = state::wait_sync;

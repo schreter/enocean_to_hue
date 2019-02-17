@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,6 +54,12 @@
 class hue_sensor_command
 {
 public:
+#ifdef ARDUINO
+  using timestamp_t = int32_t;
+#else
+  using timestamp_t = int64_t;
+#endif
+
   /*!
    * @brief Construct command hander to send commands to the Hue bridge via a sensor.
    *
@@ -70,7 +76,7 @@ public:
     ip_(ip), api_key_(api_key), sensor_id_(sensor_id)
   {}
 
-  ~hue_sensor_command() noexcept {}
+  virtual ~hue_sensor_command() noexcept {}
 
   /*!
    * @brief Post a value to the sensor.
@@ -83,16 +89,17 @@ public:
    */
   void post(int32_t value);
 
-  /// Get FD to poll on, if any.
-  int get_fd() const noexcept { return fd_; }
-
-  /// Get events to poll for.
-  short get_events() const noexcept;
-
   /// Process events on file descriptor.
-  void poll();
+  virtual void poll() = 0;
 
 private:
+  /// Get current timestamp.
+  virtual timestamp_t timestamp() noexcept = 0;
+
+  /// Start connecting to the remote side. Returns true if connected immediately.
+  virtual bool start_connect() = 0;
+
+protected:
   /// Current state of the handler.
   enum class state
   {
@@ -106,23 +113,38 @@ private:
   /// Element of the queue.
   struct queue_element
   {
-    int32_t value;      ///< Value to post.
-    int64_t timestamp;  ///< Milliseconds since some common point in time.
+    int32_t value;          ///< Value to post.
+    timestamp_t timestamp;  ///< Milliseconds since some common point in time.
   };
 
-  /// Get current timestamp.
-  static int64_t timestamp() noexcept;
+  /// Get current request state.
+  state get_state() const noexcept { return state_; }
 
-  /// Prepare buffer with first command in queue.
-  bool prepare_buffer(int64_t timestamp) noexcept;
+  /// Prepare buffer with the first command in queue.
+  bool prepare_buffer(timestamp_t timestamp) noexcept;
 
-  /// Start connecting to the remote side.
-  void start_connect();
+  /// The connection is established, send data now.
+  void connected() noexcept
+  {
+    state_ = state::sending;
+  }
+
+  /// Request data has been sent, now receiving response.
+  void request_sent() noexcept
+  {
+    state_ = state::receiving;
+  }
+
+  /// Inform the handler that the command has been sent and confirmed.
+  void request_finished() noexcept;
+
+  /// Inform the handler that the request failed.
+  void request_failed() noexcept { request_finished(); }
 
   /// Maximum 4 commands in the queue.
   static constexpr auto MAX_QUEUE_SIZE = 4;
   /// Maximum 0.5 seconds for the bridge to accept the command.
-  static constexpr auto MAX_EVENT_AGE = 500000;
+  static constexpr timestamp_t MAX_EVENT_AGE = 500000;
 
   /// Remote IP address.
   const uint32_t ip_;
@@ -131,19 +153,20 @@ private:
   /// Sensor ID to post to.
   const int sensor_id_;
 
-  /// File descriptor of the current connection, if any.
-  int fd_ = -1;
-  /// Current state of the connection.
-  state state_ = state::idle;
+  /// Send pointer.
+  const uint8_t* send_ptr_ = nullptr;
+  /// Outstanding send size.
+  uint16_t send_outstanding_size_ = 0;
+
+  /// Send/receive buffer with current command or response.
+  char buffer_[512];
+
+private:
   /// Current queue size.
   uint8_t queue_size_ = 0;
   /// Queue with commands to send.
   queue_element queue_[MAX_QUEUE_SIZE];
 
-  /// Send pointer.
-  const uint8_t* send_ptr_ = nullptr;
-  /// Outstanding send size.
-  uint16_t send_outstanding_size_ = 0;
-  /// Send buffer with current command.
-  char buffer_[512];
+  /// Current state of the connection.
+  state state_ = state::idle;
 };

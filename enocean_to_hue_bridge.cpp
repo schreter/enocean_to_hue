@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,6 +95,7 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event)
   char data[128];
   hexdump(data, sizeof(data), &event.buffer, event.hdr.total_size());
   syslog(LOG_INFO, "Got event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
+  //printf("\aGot event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
   auto value = map_.map(event);
   if (value) {
     syslog(LOG_INFO, "Post command: %d", value);

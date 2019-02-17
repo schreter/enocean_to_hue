@@ -4,14 +4,16 @@ project(enocean_to_hue)
 add_executable(${PROJECT_NAME}
   "main.cpp"
   "command_mapping.cpp"
-  "crc8.cpp"
-  "enocean_serial.cpp"
+  "embedded/crc8.cpp"
+  "embedded/enocean_serial.cpp"
+  "enocean_serial_posix.cpp"
   "enocean_to_hue_bridge.cpp"
-  "hue_sensor_command.cpp"
-  # headers not necessary, but added to make them show in Qt Creator
-  "command_mapping.hpp"
-  "crc8.hpp"
-  "enocean.hpp"
-  "enocean_serial.hpp"
-  "enocean_to_hue_bridge.hpp"
-  "hue_sensor_command.hpp")
+  "embedded/hue_sensor_command.cpp"
+  "hue_sensor_command_posix.cpp"
+  "debug_posix.cpp"
+  # Embedded sources
+  "embedded/embedded_main.cpp"
+  "embedded/enocean_serial_esp8266.cpp"
+  "embedded/debug_stream_embedded.cpp"
+  "embedded/hue_sensor_command_embedded.cpp"
+)

@@ -1,0 +1,5 @@
+Add support for direct change of door contact sensor (i.e., use sensor ID)
+  - This would save 2 rules per contact sensor
+  - How to get sensor IDs? Needs to parse sensor config JSON from the bridge on startup.
+
+Add support for keep-alive connections to the bridge (no need to reestablish for each command).

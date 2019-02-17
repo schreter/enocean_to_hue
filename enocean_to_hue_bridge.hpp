@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,8 +23,8 @@
  */
 #pragma once
 
-#include "enocean_serial.hpp"
-#include "hue_sensor_command.hpp"
+#include "enocean_serial_posix.hpp"
+#include "hue_sensor_command_posix.hpp"
 #include "command_mapping.hpp"
 
 /*!
@@ -46,11 +46,11 @@ public:
 
 private:
   /// Handler for Enocean events.
-  class handler : public enocean_serial
+  class handler : public enocean_serial_posix
   {
   public:
     handler(const char* port, enocean_to_hue_bridge& parent) :
-      enocean_serial(port), parent_(parent)
+      enocean_serial_posix(port), parent_(parent)
     {}
 
   private:
@@ -62,6 +62,6 @@ private:
   void handle_event(const enocean_event& event);
 
   command_mapping map_;
-  hue_sensor_command cmd_;
+  hue_sensor_command_posix cmd_;
   handler hnd_;
 };

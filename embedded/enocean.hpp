@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 /*
 Example packet:
@@ -49,6 +50,12 @@ Example packet:
 0x74 CRC8
 */
 
+#ifdef ARDUINO
+#include "lwip/def.h"
+#else
+#include <arpa/inet.h>
+#endif
+
 /// ID of a sensor or actor in the network.
 struct enocean_id
 {
@@ -62,7 +69,10 @@ struct enocean_id
 
   uint32_t raw() const noexcept
   {
-    return *reinterpret_cast<const uint32_t*>(this);
+    uint32_t raw_id;
+    memcpy(&raw_id, this, 4); // may be unaligned
+    return ntohl(raw_id);
+    //return *reinterpret_cast<const uint32_t*>(this);
   }
 
   friend bool operator<(const enocean_id& l, const enocean_id& r) noexcept

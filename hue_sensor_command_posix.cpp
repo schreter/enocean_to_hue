@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Ivan Schréter (schreter@gmx.net)
+ * Copyright (C) 2018-2019 Ivan Schréter (schreter@gmx.net)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
  * This copyright notice MUST APPEAR in all copies of the software!
  */
 
-#include "hue_sensor_command.hpp"
+#include "hue_sensor_command_posix.hpp"
 
 #include <system_error>
-#include <cstring>
 
 #include <time.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -32,35 +30,21 @@
 #include <unistd.h>
 #include <poll.h>
 
-void hue_sensor_command::post(int32_t value)
+short hue_sensor_command_posix::get_events() const noexcept
 {
-  if (queue_size_ == MAX_QUEUE_SIZE) {
-    // drop the oldest
-    memmove(&queue_[0], &queue_[1], sizeof(queue_[0]) * (MAX_QUEUE_SIZE - 1));
-    --queue_size_;
-  }
-  auto& q = queue_[queue_size_++];
-  q.value = value;
-  q.timestamp = timestamp();
-  if (state_ == state::idle) {
-    if (prepare_buffer(q.timestamp))
-      start_connect();
-  }
-}
-
-short hue_sensor_command::get_events() const noexcept
-{
-  if (state_ != state::receiving)
+  if (get_state() != state::receiving)
     return POLLOUT;
   else
     return POLLIN;
 }
 
-void hue_sensor_command::poll()
+void hue_sensor_command_posix::poll()
 {
   for (;;) {
-    switch (state_) {
+    switch (get_state()) {
     case state::connecting:
+      connected();
+      // fall throught to send first block
     case state::sending:
     {
       // socket writable, write remaining stuff
@@ -68,7 +52,6 @@ void hue_sensor_command::poll()
       if (res < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
           // cannot write any more data
-          state_ = state::sending;
           return; // will retry later
         } else if (errno == EINTR) {
           continue;
@@ -78,7 +61,7 @@ void hue_sensor_command::poll()
             "Error writing data to socket");
       } else if (res == send_outstanding_size_) {
         // all written
-        state_ = state::receiving;
+        request_sent();
         continue;
       } else if (res < send_outstanding_size_) {
         send_outstanding_size_ -= res;
@@ -105,10 +88,8 @@ void hue_sensor_command::poll()
       } else if (res == 0) {
         // EOF
         close(fd_);
-        state_ = state::idle;
         fd_ = -1;
-        if (prepare_buffer(timestamp()))
-          start_connect();  // next request pending
+        request_finished();
         return;
       } else {
         // more data pending
@@ -122,51 +103,14 @@ void hue_sensor_command::poll()
   }
 }
 
-int64_t hue_sensor_command::timestamp() noexcept
+hue_sensor_command::timestamp_t hue_sensor_command_posix::timestamp() noexcept
 {
   struct timespec tp;
   clock_gettime(CLOCK_MONOTONIC, &tp);
   return tp.tv_nsec / 1000000 + tp.tv_sec * 1000;
 }
 
-bool hue_sensor_command::prepare_buffer(int64_t timestamp) noexcept
-{
-  // pick first valid element and prepare buffer with it
-  // return true, if valid, false on empty queue
-  for (uint8_t i = 0; i < queue_size_; ++i) {
-    auto& q = queue_[i];
-    if (timestamp - q.timestamp <= MAX_EVENT_AGE) {
-      // use this one
-      char tmp[64];
-      auto cl = snprintf(tmp, sizeof(tmp),
-            "{\"state\":{\"status\": %d}}", q.value);
-      send_outstanding_size_ = uint16_t(snprintf(
-            buffer_, sizeof(buffer_),
-            "PUT /api/%s/sensors/%d HTTP/1.1\r\n"
-            "Host: %d.%d.%d.%d\r\n"
-            "Accept: */*\r\n"
-            "User-Agent: enocean-gw/0.1\r\n"
-            "Content-Type: application/json\r\n"
-            "Content-Length: %d\r\n"
-            "Connection: close\r\n"
-            "\r\n%s",
-            api_key_, sensor_id_,
-            ip_ & 0xff, (ip_ >> 8) & 0xff, (ip_ >> 16) & 0xff, ip_ >> 24,
-            cl, tmp));
-      send_ptr_ = reinterpret_cast<const uint8_t*>(buffer_);
-      if (++i < queue_size_)
-        memmove(&queue_[0], &queue_[i], sizeof(queue_[0]) * (queue_size_ - i));
-      queue_size_ -= i;
-      return true;
-    }
-  }
-
-  // didn't find any usable
-  queue_size_ = 0;
-  return false;
-}
-
-void hue_sensor_command::start_connect()
+bool hue_sensor_command_posix::start_connect()
 {
   fd_ = socket(AF_INET, SOCK_STREAM, 0);
   if (fd_ < 0)
@@ -201,9 +145,9 @@ void hue_sensor_command::start_connect()
       throw std::system_error(
           std::error_code(errno, std::generic_category()),
           "Error connecting the socket");
-    state_ = state::connecting;
+    return false;
   } else {
-    state_ = state::sending;
     // immediately connected, next poll will send
+    return true;
   }
 }
