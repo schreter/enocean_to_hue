@@ -9,6 +9,9 @@ const char* password = "MY_PWD";
 /// Bridge IP address.
 IPAddress bridge(192, 168, 1, 128);
 
+/// Password for OTA updates.
+const char* ota_password = "admin";
+
 /// API key to authorize connection to the bridge.
 const char* api_key = "xxx";
 

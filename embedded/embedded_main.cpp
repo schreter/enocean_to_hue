@@ -23,6 +23,7 @@
 
 #include <ESP8266WiFi.h>
 #include <ESP.h>
+#include <ArduinoOTA.h>
 
 // user_config.hpp must be provided by the user, see user_config_example.hpp
 #include "user_config.hpp"
@@ -43,6 +44,54 @@ void setup_wifi()
   delay(10);
   debug_stream::instance() << F("Connecting WiFi to ") << ssid;
   WiFi.begin(ssid, password);
+}
+
+void setup_ota()
+{
+  // Port defaults to 8266
+  ArduinoOTA.setPort(8266);
+
+  // Hostname defaults to esp8266-[ChipID]
+  ArduinoOTA.setHostname("enocean-hue");
+
+  // No authentication by default
+  ArduinoOTA.setPassword(ota_password);
+
+  // Password can be set with it's md5 value as well
+  // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
+  // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
+
+  ArduinoOTA.onStart([]() {
+    const __FlashStringHelper* type;
+    if (ArduinoOTA.getCommand() == U_FLASH) {
+      type = F("sketch");
+    } else { // U_SPIFFS
+      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
+      type = F("filesystem");
+    }
+
+    debug_stream::instance() << F("OTA update: starting to update ") << type << '\n';
+  });
+  ArduinoOTA.onEnd([]() {
+    debug_stream::instance() << F("\nOTA update: done\n");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    debug_stream::instance() << F("OTA update: progress ") << (progress * uint32_t(100) / total) << '\r';
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    auto& str = debug_stream::instance();
+    str << F("\nOTA update error ") << error << F(": ");
+    switch (error) {
+      case OTA_AUTH_ERROR: str << F("authorization failed\n"); break;
+      case OTA_BEGIN_ERROR: str << F("begin failed\n"); break;
+      case OTA_CONNECT_ERROR: str << F("connet failed\n"); break;
+      case OTA_RECEIVE_ERROR: str << F("receive failed\n"); break;
+      case OTA_END_ERROR: str << F("end failed\n"); break;
+      default: str << F("unknown\n"); break;
+    }
+  });
+  ArduinoOTA.begin();
+  debug_stream::instance() << F("OTA ready\n");
 }
 
 void setup()
@@ -137,6 +186,7 @@ void loop()
     digitalWrite(LED_BUILTIN, HIGH);
     led_off_time = led_on_time = 0;
     connected = true;
+    setup_ota();
   }
 
   if (led_off_time && (time - led_off_time >= 0)) {
@@ -164,6 +214,7 @@ void loop()
   // now process events
   serial.poll();
   command.poll();
+  ArduinoOTA.handle();
 }
 
 #endif
