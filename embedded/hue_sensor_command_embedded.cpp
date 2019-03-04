@@ -21,6 +21,7 @@
 
 #include "hue_sensor_command_embedded.hpp"
 #include "debug.hpp"
+#include "embedded_syslog.hpp"
 
 #include <Arduino.h>
 
@@ -94,6 +95,7 @@ bool hue_sensor_command_embedded::start_connect()
   if (pcb_) {
     if (s_debug)
       debug_stream::instance() << F("Aborting left-over socket\n");
+    syslog_P(LOG_ERR, PSTR("Aborting left-over socket %p at connection start"), pcb_);
     tcp_abort(pcb_);
   }
   pcb_ = tcp_new();

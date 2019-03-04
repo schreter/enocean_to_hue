@@ -35,6 +35,7 @@
 #include "enocean_serial_esp8266.hpp"
 #include "hue_sensor_command_embedded.hpp"
 #include "debug.hpp"
+#include "embedded_syslog.hpp"
 
 /// Debug activated
 bool s_debug = false;
@@ -42,7 +43,7 @@ bool s_debug = false;
 void setup_wifi()
 {
   delay(10);
-  debug_stream::instance() << F("Connecting WiFi to ") << ssid;
+  debug_stream::instance() << F("Connecting WiFi to ") << ssid << '\n';
   WiFi.begin(ssid, password);
 }
 
@@ -113,6 +114,8 @@ void setup()
   Serial.println();
 #endif
   //setup_wifi();
+  syslog_begin(syslog_host, syslog_port);
+  openlog("enocean-hue", LOG_CONS, LOG_USER);
 }
 
 long next_led(long current_time, long delta)
@@ -156,6 +159,7 @@ void loop()
           debug_stream::instance() << F("Received EnOcean event, addr ") <<
               showbase << hex << addr << dec << F(", button ") << button;
         auto id = map_action(addr, button);
+        syslog_P(LOG_INFO, PSTR("EnOcean event, addr %lx, button %d => ID %ld"), addr, button, id);
         if (id) {
           if (s_debug)
             debug_stream::instance() << F(" => action ") << id << '\n';
@@ -184,6 +188,7 @@ void loop()
     debug_stream::instance() << F("\nWiFi connected, IP address: ") <<
         int(ip[0]) << '.' << int(ip[1]) << '.' << int(ip[2]) << '.' << int(ip[3]) << '\n';
     digitalWrite(LED_BUILTIN, HIGH);
+    syslog_P(LOG_INFO, PSTR("WiFi connected"));
     led_off_time = led_on_time = 0;
     connected = true;
     setup_ota();

@@ -6,6 +6,12 @@ const char* ssid = "MY_NET";
 /// WiFi password.
 const char* password = "MY_PWD";
 
+/// Syslog server host.
+IPAddress syslog_host(192, 168, 1, 127);
+
+/// Syslog server port. Set to 0 to not use syslog facility.
+uint16_t syslog_port = 514;
+
 /// Bridge IP address.
 IPAddress bridge(192, 168, 1, 128);
 
