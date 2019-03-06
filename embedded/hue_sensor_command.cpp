@@ -22,8 +22,10 @@
 #include <cstdio>
 #include <cstring>
 
-void hue_sensor_command::post(int32_t value)
+void hue_sensor_command::post(int32_t value, uint32_t group)
 {
+  if (own_group_ >= 0 && group != uint32_t(own_group_))
+    return;
   if (queue_size_ == MAX_QUEUE_SIZE) {
     // drop the oldest
     memmove(&queue_[0], &queue_[1], sizeof(queue_[0]) * (MAX_QUEUE_SIZE - 1));
@@ -49,7 +51,7 @@ bool hue_sensor_command::prepare_buffer(timestamp_t timestamp) noexcept
       char tmp[64];
       auto cl = snprintf(tmp, sizeof(tmp),
             "{\"state\":{\"status\": %d}}", q.value);
-      send_outstanding_size_ = uint16_t(snprintf(
+      send_total_size_ = send_outstanding_size_ = uint16_t(snprintf(
             buffer_, sizeof(buffer_),
             "PUT /api/%s/sensors/%d HTTP/1.1\r\n"
             "Host: %d.%d.%d.%d\r\n"

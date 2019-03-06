@@ -34,14 +34,15 @@ public:
    * @param ip IP address of the bride.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
+   * @param group_id group ID on which to react.
    *
    * The command handler PUTs to the Sensor URL in form
    * <tt>http://&lt;ip&gt;/api/&lt;api_key&gt;/sensors/&lt;sensor_id&gt;</tt>.
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  explicit hue_sensor_command_posix(uint32_t ip, const char* api_key, int sensor_id) noexcept :
-    hue_sensor_command(ip, api_key, sensor_id)
+  explicit hue_sensor_command_posix(uint32_t ip, const char* api_key, int sensor_id, int group_id) noexcept :
+    hue_sensor_command(ip, api_key, sensor_id, group_id)
   {}
 
   /// Get FD to poll on, if any.

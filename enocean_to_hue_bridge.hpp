@@ -39,7 +39,8 @@ public:
       uint32_t bridge_ip,
       const char* api_key,
       int sensor_id,
-      const char* map_file);
+      const char* map_file,
+      int group_id);
 
   /// Run poll loop forever.
   [[noreturn]] void run_poll_loop();

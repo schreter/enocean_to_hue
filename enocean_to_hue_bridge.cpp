@@ -28,8 +28,9 @@ enocean_to_hue_bridge::enocean_to_hue_bridge(
     uint32_t bridge_ip,
     const char* api_key,
     int sensor_id,
-    const char* map_file) :
-  cmd_(bridge_ip, api_key, sensor_id),
+    const char* map_file,
+    int group_id) :
+  cmd_(bridge_ip, api_key, sensor_id, group_id),
   hnd_(port, *this)
 {
   map_.load(map_file);
@@ -91,14 +92,33 @@ static void hexdump(char* dest, size_t dest_rem, const void* ptr, size_t size) n
 
 void enocean_to_hue_bridge::handle_event(const enocean_event& event)
 {
-  static int count = 0;
+  uint32_t addr = 0;
+  int8_t button = 0;
+  switch (event.erp1.event_type) {
+    case enocean_erp1_type::CONTACT:
+      addr = event.erp1.contact_event.sender.raw();
+      button = event.erp1.contact_event.is_closed() ? 1 : 0;
+      break;
+    case enocean_erp1_type::SWITCH:
+      addr = event.erp1.switch_event.sender.raw();
+      button = event.erp1.switch_event.button_id();
+      break;
+  }
+
+  auto value = map_.map(event);
+  auto group = value >> 24;
+  value &= 0xffffff;
+
   char data[128];
   hexdump(data, sizeof(data), &event.buffer, event.hdr.total_size());
-  syslog(LOG_INFO, "Got event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
+
+  syslog(LOG_INFO, "EnOcean event, addr %x, button %d => ID %d@%d/%d, RSSI -%u, data %s",
+      addr, button, value, group, cmd_.get_group_id(), event.erp1.contact_event.subtel[0].dbm,
+      data);
+
   //printf("\aGot event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
-  auto value = map_.map(event);
   if (value) {
-    syslog(LOG_INFO, "Post command: %d", value);
-    cmd_.post(value);
+    syslog(LOG_INFO, "Post command: %d, group %d", value, group);
+    cmd_.post(value, group);
   }
 }

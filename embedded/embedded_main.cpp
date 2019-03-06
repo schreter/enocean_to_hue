@@ -159,11 +159,14 @@ void loop()
           debug_stream::instance() << F("Received EnOcean event, addr ") <<
               showbase << hex << addr << dec << F(", button ") << button;
         auto id = map_action(addr, button);
-        syslog_P(LOG_INFO, PSTR("EnOcean event, addr %lx, button %d => ID %ld"), addr, button, id);
+        auto group = id >> 24;
+        id &= 0xffffff;
+        syslog_P(LOG_INFO, PSTR("EnOcean event, addr %lx, button %d => ID %ld@%ld/%ld, RSSI -%u"),
+                 addr, button, id, group, command.get_group_id(), event.erp1.contact_event.subtel[0].dbm);
         if (id) {
           if (s_debug)
-            debug_stream::instance() << F(" => action ") << id << '\n';
-          command.post(id);
+            debug_stream::instance() << F(" => action ") << id << '@' << group << '?' << command.get_group_id() << '\n';
+          command.post(id, group);
         } else {
           if (s_debug)
             debug_stream::instance() << F(" => no known action\n");
@@ -186,9 +189,12 @@ void loop()
   } else if (!connected) {
     auto ip = WiFi.localIP();
     debug_stream::instance() << F("\nWiFi connected, IP address: ") <<
-        int(ip[0]) << '.' << int(ip[1]) << '.' << int(ip[2]) << '.' << int(ip[3]) << '\n';
+        int(ip[0]) << '.' << int(ip[1]) << '.' << int(ip[2]) << '.' << int(ip[3]) <<
+        F(", RSSI=") << WiFi.RSSI() << '\n';
+    // Use last octet of IP as group ID.
+    command.set_group_id(ip[3]);
     digitalWrite(LED_BUILTIN, HIGH);
-    syslog_P(LOG_INFO, PSTR("WiFi connected"));
+    syslog_P(LOG_INFO, PSTR("WiFi connected, RSSI=%ld"), WiFi.RSSI());
     led_off_time = led_on_time = 0;
     connected = true;
     setup_ota();

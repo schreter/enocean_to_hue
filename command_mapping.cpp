@@ -30,7 +30,7 @@ command_mapping::command_mapping()
   // NOP for now
 }
 
-int32_t command_mapping::map(const enocean_event& e)
+uint32_t command_mapping::map(const enocean_event& e)
 {
   if (e.hdr.packet_type == enocean_packet_type::RADIO_ERP1) {
     switch (e.erp1.event_type) {
@@ -59,7 +59,7 @@ int32_t command_mapping::map(const enocean_event& e)
   return 0;
 }
 
-void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value)
+void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t group)
 {
   if (!value)
     throw std::runtime_error("Value must be specified");
@@ -68,11 +68,11 @@ void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value)
 
   if (button < 0) {
     for (button = ((button == -2) ? 0 : 1); button <= 8; ++button)
-      add_mapping(id, button, value + button);
+      add_mapping(id, button, value + button, group);
     return;
   }
-  mapping_.emplace(std::make_pair(id, button), value);
-  printf("Added mapping for %x: %d -> %d\n", ntohl(id.raw()), button, value);
+  mapping_.emplace(std::make_pair(id, button), uint32_t(value) | group);
+  printf("Added mapping for %x: %d -> %d/%u\n", ntohl(id.raw()), button, value, group);
 }
 
 void command_mapping::load(const char* filename)
@@ -81,12 +81,21 @@ void command_mapping::load(const char* filename)
   if (!infile.is_open())
     throw std::runtime_error("Cannot open mapping file");
   std::string line;
+  uint32_t group = 0;
   while (std::getline(infile, line)) {
     if (line.length() == 0 || line[0] == '#')
       continue;
     unsigned a, b, c, d;
     int button, value;
-    auto res = sscanf(line.c_str(), "%x:%x:%x:%x %d %d", &a, &b, &c, &d, &button, &value);
+    auto str = line.c_str();
+    uint32_t new_group;
+    if (1 == sscanf(str, "group %u", &new_group))
+    {
+      // group set
+      group = new_group << 24;
+      continue;
+    }
+    auto res = sscanf(str, "%x:%x:%x:%x %d %d", &a, &b, &c, &d, &button, &value);
     if (res != 6)
       throw std::runtime_error("Expected line in form XX:XX:XX:XX # #####");
     if (a > 255 || b > 255 || c > 255 || d > 255)
@@ -95,6 +104,6 @@ void command_mapping::load(const char* filename)
       throw std::runtime_error("Button ID must be in range [-2,8]");
     enocean_id id;
     id.set(uint8_t(a), uint8_t(b), uint8_t(c), uint8_t(d));
-    add_mapping(id, int8_t(button), value);
+    add_mapping(id, int8_t(button), value, group);
   }
 }

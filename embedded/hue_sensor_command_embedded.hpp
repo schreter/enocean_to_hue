@@ -41,14 +41,15 @@ public:
    * @param ip IP address of the bride.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
+   * @param group group for which to post to bridge.
    *
    * The command handler PUTs to the Sensor URL in form
    * <tt>http://&lt;ip&gt;/api/&lt;api_key&gt;/sensors/&lt;sensor_id&gt;</tt>.
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  explicit hue_sensor_command_embedded(uint32_t ip, const char* api_key, int sensor_id) noexcept :
-    hue_sensor_command(ip, api_key, sensor_id)
+  explicit hue_sensor_command_embedded(uint32_t ip = 0, const char* api_key = "", int sensor_id = 0, int group_id = -1) noexcept :
+    hue_sensor_command(ip, api_key, sensor_id, group_id)
   {}
 
   /// Process events on file descriptor.
@@ -74,4 +75,8 @@ private:
   tcp_pcb* pcb_ = nullptr;
   /// Force restarting connect in poll(), if it failed due to OOM.
   bool restart_connect_ = false;
+  /// Time of the connect.
+  unsigned long connect_time_ = 0;
+  /// Time when to start reporting slow connection.
+  unsigned long report_time_ = 0;
 };

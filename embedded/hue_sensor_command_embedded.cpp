@@ -33,7 +33,34 @@ extern bool s_debug;
 
 void hue_sensor_command_embedded::poll()
 {
-  switch (get_state()) {
+  auto s = get_state();
+  if (s != state::idle && s < state::unknown && pcb_ && report_time_) {
+    // check for long-running requests
+    unsigned long time = millis();
+    auto delta = time - connect_time_;
+    if (delta >= report_time_) {
+      syslog_P(LOG_WARNING, PSTR("Request still not done after %lums, state %d, to_send %u/%u"),
+        delta, int(s), unsigned(send_outstanding_size_), unsigned(send_total_size_));
+      report_time_ *= 2;
+      if (report_time_ > 8000) {
+        // way too long request, abort it
+        syslog_P(LOG_WARNING, PSTR("Aborting request, restarting"));
+        auto err = tcp_close(pcb_);
+        if (err != ERR_OK) {
+          if (s_debug)
+            debug_stream::instance() << F("Error closing socket, aborting socket; err=") << int(err);
+          tcp_abort(pcb_);
+        }
+        pcb_ = nullptr;
+        report_time_ = 0;
+        request_failed();
+        ESP.restart();  // to be on the safe side
+        return;
+      }
+    }
+  }
+
+  switch (s) {
     case state::connecting:
       // connect is in progress
       break;
@@ -46,10 +73,10 @@ void hue_sensor_command_embedded::poll()
         to_send = send_outstanding_size_;
       if (to_send == 0)
         break; // no send space
-      if (s_debug) {
+      if (s_debug && send_outstanding_size_ == send_total_size_) {
         auto& stream = debug_stream::instance();
         stream << F("Sending request to Hue bridge:\n");
-        stream.write(send_ptr_, to_send);
+        stream.write(send_ptr_, send_outstanding_size_);
       }
       auto err = tcp_write(pcb_, send_ptr_, to_send, 0);
       if (err == ERR_MEM) {
@@ -102,17 +129,22 @@ bool hue_sensor_command_embedded::start_connect()
   if (!pcb_) {
     if (s_debug)
       debug_stream::instance() << F("OUT OF MEMORY on start_connect()\n");
+    syslog_P(LOG_ERR, PSTR("OUT OF MEMORY on start_connect()"));
     restart_connect_ = true;
+    report_time_ = 0;
     return false;
   }
   tcp_arg(pcb_, this);
   tcp_err(pcb_, connection_error);
   tcp_recv(pcb_, data_received);
 
+  connect_time_ = millis();
+  report_time_ = 500; // give some time for proper request handling initially
   auto err = tcp_connect(pcb_, reinterpret_cast<const ip_addr_t*>(&ip_), 80, connection_established);
   if (err != ERR_OK) {
     if (s_debug)
       debug_stream::instance() << F("OUT OF MEMORY on connect()\n");
+    syslog_P(LOG_ERR, PSTR("OUT OF MEMORY on connect()"));
     tcp_abort(pcb_);
     pcb_ = nullptr;
     restart_connect_ = true;
@@ -127,17 +159,31 @@ void hue_sensor_command_embedded::connection_error(void* arg, err_t err)
 {
   if (s_debug)
     debug_stream::instance() << F("TCP error ") << int(err);
+  syslog_P(LOG_ERR, PSTR("TCP error %d"), int(err));
   auto self = reinterpret_cast<hue_sensor_command_embedded*>(arg);
   self->pcb_ = nullptr;
+  self->report_time_ = 0;
   self->request_failed();
 }
 
 err_t hue_sensor_command_embedded::connection_established(void* arg, tcp_pcb* tpcb, err_t err)
 {
   auto self = reinterpret_cast<hue_sensor_command_embedded*>(arg);
+  if (err != ERR_OK) {
+    if (s_debug)
+      debug_stream::instance() << F("TCP connect error ") << int(err);
+    syslog_P(LOG_ERR, PSTR("TCP connect error %d"), int(err));
+    self->pcb_ = nullptr;
+    if (tpcb)
+      tcp_abort(tpcb);
+    self->report_time_ = 0;
+    self->request_failed();
+    return err;
+  }
   if (s_debug)
     debug_stream::instance() << F("Connection established\n");
   self->connected();
+  return ERR_OK;
 }
 
 err_t hue_sensor_command_embedded::data_received(void* arg, tcp_pcb* tpcb, pbuf* p, err_t err)
@@ -157,6 +203,7 @@ err_t hue_sensor_command_embedded::data_received(void* arg, tcp_pcb* tpcb, pbuf*
       tcp_abort(tpcb);
     }
     self->pcb_ = nullptr;
+    self->report_time_ = 0;
     self->request_finished();
   } else {
     // else just confirm data, ignore contents

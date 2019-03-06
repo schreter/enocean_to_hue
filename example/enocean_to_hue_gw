@@ -10,7 +10,8 @@ BRIDGE="xxx"
 API_KEY="xxx"
 SENSOR_ID=##
 MAPPING="/etc/enocean_to_hue.conf"
-ARGS="$PORT $BRIDGE $API_KEY $SENSOR_ID $MAPPING"
+GROUP_ID="##"
+ARGS="$PORT $BRIDGE $API_KEY $SENSOR_ID $MAPPING $GROUP_ID"
 
 test -f $DAEMON || exit 0
 

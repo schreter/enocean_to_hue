@@ -34,9 +34,9 @@ static int64_t timestamp() noexcept
 
 int main(int argc, const char** argv)
 {
-  if (argc != 6) {
+  if (argc != 7) {
     std::cerr << "Usage: " << argv[0] <<
-        " <usb300 port> <bridge IP> <API key> <sensor ID> <mapping file>\n";
+        " <usb300 port> <bridge IP> <API key> <sensor ID> <mapping file> <group ID>\n";
     return 1;
   }
   int sensor_id;
@@ -49,6 +49,17 @@ int main(int argc, const char** argv)
       return 1;
     }
     sensor_id = int(id);
+  }
+  int group_id;
+  {
+    char* end;
+    auto id = strtol(argv[6], &end, 10);
+    if (end == argv[6] || *end || id < -1 || id > 255) {
+      std::cerr << "Specified group ID '" << argv[6] <<
+          "' is invalid. Expected ID in range [-1,255].\n";
+      return 1;
+    }
+    group_id = int(id);
   }
   struct in_addr bridge_addr;
   {
@@ -70,7 +81,7 @@ int main(int argc, const char** argv)
       // child process, run the bridge
       openlog("enocean_to_hue", LOG_CONS | LOG_PID, LOG_LOCAL1);
       try {
-        enocean_to_hue_bridge bridge(argv[1], bridge_addr.s_addr, argv[3], sensor_id, argv[5]);
+        enocean_to_hue_bridge bridge(argv[1], bridge_addr.s_addr, argv[3], sensor_id, argv[5], group_id);
         bridge.run_poll_loop();
       } catch (std::exception& e) {
         syslog(LOG_ERR, "ERROR: %s", e.what());

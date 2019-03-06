@@ -1,4 +1,6 @@
 // Copy to user_config.hpp and adjust for your network settings
+//
+// NOTE: Group ID is determined by using last octet of the assigned IP address.
 
 /// WiFi name.
 const char* ssid = "MY_NET";
