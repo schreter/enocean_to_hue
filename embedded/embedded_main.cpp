@@ -40,11 +40,19 @@
 /// Debug activated
 bool s_debug = false;
 
+/// Get SSID directly (normally done like this).
+const char* extract_ssid(const char* id) { return id; }
+
+/// Get SSID via a function.
+template<typename Fnc>
+const char* extract_ssid(Fnc& f) { return f(); }
+
 void setup_wifi()
 {
+  auto real_ssid = extract_ssid(ssid);
   delay(10);
-  debug_stream::instance() << F("Connecting WiFi to ") << ssid << '\n';
-  WiFi.begin(ssid, password);
+  debug_stream::instance() << F("Connecting WiFi to ") << real_ssid << '\n';
+  WiFi.begin(real_ssid, password);
 }
 
 void setup_ota()
@@ -188,13 +196,14 @@ void loop()
     }
   } else if (!connected) {
     auto ip = WiFi.localIP();
+    auto real_ssid = extract_ssid(ssid);
     debug_stream::instance() << F("\nWiFi connected, IP address: ") <<
         int(ip[0]) << '.' << int(ip[1]) << '.' << int(ip[2]) << '.' << int(ip[3]) <<
-        F(", RSSI=") << WiFi.RSSI() << '\n';
+        F(", RSSI=") << WiFi.RSSI() << F(", SSID=") << real_ssid << '\n';
     // Use last octet of IP as group ID.
     command.set_group_id(ip[3]);
     digitalWrite(LED_BUILTIN, HIGH);
-    syslog_P(LOG_INFO, PSTR("WiFi connected, RSSI=%ld"), WiFi.RSSI());
+    syslog_P(LOG_INFO, PSTR("WiFi connected, RSSI=%ld, SSID=%s"), WiFi.RSSI(), real_ssid);
     led_off_time = led_on_time = 0;
     connected = true;
     setup_ota();
