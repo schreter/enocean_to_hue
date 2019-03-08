@@ -54,10 +54,10 @@ public:
   /// Process events on file descriptor.
   virtual void poll() override;
 
-private:
   /// Get current timestamp.
   virtual int64_t timestamp() noexcept override;
 
+private:
   /// Start connecting to the remote side.
   virtual bool start_connect() override;
 

@@ -39,16 +39,16 @@ void hue_sensor_command_embedded::poll()
     unsigned long time = millis();
     auto delta = time - connect_time_;
     if (delta >= report_time_) {
-      syslog_P(LOG_WARNING, PSTR("Request still not done after %lums, state %d, to_send %u/%u"),
+      syslog_P(LOG_WARNING, PSTR("EnOcean Request still not done after %lums, state %d, to_send %u/%u"),
         delta, int(s), unsigned(send_outstanding_size_), unsigned(send_total_size_));
       report_time_ *= 2;
       if (report_time_ > 8000) {
         // way too long request, abort it
-        syslog_P(LOG_WARNING, PSTR("Aborting request, restarting"));
+        syslog_P(LOG_WARNING, PSTR("EnOcean Aborting request, restarting"));
         auto err = tcp_close(pcb_);
         if (err != ERR_OK) {
           if (s_debug)
-            debug_stream::instance() << F("Error closing socket, aborting socket; err=") << int(err);
+            debug_stream::instance() << F("EnOcean Error closing socket, aborting socket; err=") << int(err);
           tcp_abort(pcb_);
         }
         pcb_ = nullptr;
@@ -96,6 +96,7 @@ void hue_sensor_command_embedded::poll()
       send_ptr_ += to_send;
       if (send_outstanding_size_ == 0) {
         // all written
+        tcp_output(pcb_);
         request_sent();
       }
       break;
@@ -120,16 +121,12 @@ bool hue_sensor_command_embedded::start_connect()
 {
   // ensure we have a valid socket
   if (pcb_) {
-    if (s_debug)
-      debug_stream::instance() << F("Aborting left-over socket\n");
-    syslog_P(LOG_ERR, PSTR("Aborting left-over socket %p at connection start"), pcb_);
+    syslog_P(LOG_ERR, PSTR("EnOcean Aborting left-over socket %p at connection start"), pcb_);
     tcp_abort(pcb_);
   }
   pcb_ = tcp_new();
   if (!pcb_) {
-    if (s_debug)
-      debug_stream::instance() << F("OUT OF MEMORY on start_connect()\n");
-    syslog_P(LOG_ERR, PSTR("OUT OF MEMORY on start_connect()"));
+    syslog_P(LOG_ERR, PSTR("EnOcean OUT OF MEMORY on start_connect()"));
     restart_connect_ = true;
     report_time_ = 0;
     return false;
@@ -142,9 +139,7 @@ bool hue_sensor_command_embedded::start_connect()
   report_time_ = 500; // give some time for proper request handling initially
   auto err = tcp_connect(pcb_, reinterpret_cast<const ip_addr_t*>(&ip_), 80, connection_established);
   if (err != ERR_OK) {
-    if (s_debug)
-      debug_stream::instance() << F("OUT OF MEMORY on connect()\n");
-    syslog_P(LOG_ERR, PSTR("OUT OF MEMORY on connect()"));
+    syslog_P(LOG_ERR, PSTR("EnOcean OUT OF MEMORY on connect()"));
     tcp_abort(pcb_);
     pcb_ = nullptr;
     restart_connect_ = true;
@@ -157,9 +152,7 @@ bool hue_sensor_command_embedded::start_connect()
 
 void hue_sensor_command_embedded::connection_error(void* arg, err_t err)
 {
-  if (s_debug)
-    debug_stream::instance() << F("TCP error ") << int(err);
-  syslog_P(LOG_ERR, PSTR("TCP error %d"), int(err));
+  syslog_P(LOG_ERR, PSTR("EnOcean TCP error %d"), int(err));
   auto self = reinterpret_cast<hue_sensor_command_embedded*>(arg);
   self->pcb_ = nullptr;
   self->report_time_ = 0;
@@ -170,9 +163,7 @@ err_t hue_sensor_command_embedded::connection_established(void* arg, tcp_pcb* tp
 {
   auto self = reinterpret_cast<hue_sensor_command_embedded*>(arg);
   if (err != ERR_OK) {
-    if (s_debug)
-      debug_stream::instance() << F("TCP connect error ") << int(err);
-    syslog_P(LOG_ERR, PSTR("TCP connect error %d"), int(err));
+    syslog_P(LOG_ERR, PSTR("EnOcean TCP connect error %d"), int(err));
     self->pcb_ = nullptr;
     if (tpcb)
       tcp_abort(tpcb);

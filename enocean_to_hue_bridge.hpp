@@ -27,6 +27,8 @@
 #include "hue_sensor_command_posix.hpp"
 #include "command_mapping.hpp"
 
+#include <map>
+
 /*!
  * @brief Bridge to translate Enocean sensors to Hue bridge's internal sensor.
  */
@@ -60,9 +62,16 @@ private:
     enocean_to_hue_bridge& parent_;
   };
 
-  void handle_event(const enocean_event& event);
+  void handle_event(const enocean_event& event, uint32_t remote_ip = 0);
+
+  void proxy_poll();
 
   command_mapping map_;
   hue_sensor_command_posix cmd_;
   handler hnd_;
+  std::map<int32_t, std::pair<hue_sensor_command::timestamp_t, int32_t>> command_states_;
+  const int own_group_ = -1;
+  int proxy_server_fd_ = -1;
+  unsigned long total_event_count_ = 0;
+  unsigned long our_event_count_ = 0;
 };

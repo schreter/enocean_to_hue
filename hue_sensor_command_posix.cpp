@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <poll.h>
+#include <string.h>
 
 short hue_sensor_command_posix::get_events() const noexcept
 {

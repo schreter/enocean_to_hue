@@ -122,10 +122,10 @@ public:
   /// Set group ID on which to react.
   void set_group_id(int32_t id) noexcept { own_group_ = id; }
 
-private:
   /// Get current timestamp.
   virtual timestamp_t timestamp() noexcept = 0;
 
+private:
   /// Start connecting to the remote side. Returns true if connected immediately.
   virtual bool start_connect() = 0;
 

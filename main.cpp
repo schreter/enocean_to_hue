@@ -84,20 +84,20 @@ int main(int argc, const char** argv)
         enocean_to_hue_bridge bridge(argv[1], bridge_addr.s_addr, argv[3], sensor_id, argv[5], group_id);
         bridge.run_poll_loop();
       } catch (std::exception& e) {
-        syslog(LOG_ERR, "ERROR: %s", e.what());
+        syslog(LOG_ERR, "EnOcean ERROR: %s", e.what());
       }
       return 1;
     }
 
     // parent process, wait for child
-    syslog(LOG_INFO, "Started child process %d", pid);
+    syslog(LOG_INFO, "EnOcean Started child process %d", pid);
     int status;
     auto cpid = wait(&status);
     auto end_time = timestamp();
     auto delta = end_time - start_time;
-    syslog(LOG_ERR, "Child process %d exited with status %d after %lld ms", cpid, status, delta);
+    syslog(LOG_ERR, "EnOcean Child process %d exited with status %d after %lld ms", cpid, status, delta);
     if (pid != cpid) {
-      syslog(LOG_ERR, "Wrong PID %d of terminated process, expected %d", cpid, pid);
+      syslog(LOG_ERR, "EnOcean Wrong PID %d of terminated process, expected %d", cpid, pid);
       return 1;
     }
 
