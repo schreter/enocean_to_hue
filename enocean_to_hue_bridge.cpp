@@ -80,6 +80,9 @@ enocean_to_hue_bridge::enocean_to_hue_bridge(
 
 void enocean_to_hue_bridge::run_poll_loop()
 {
+  time_t starttime;
+  time(&starttime);
+  syslog(LOG_INFO, "EnOcean child process start time %ld", starttime);
   for (;;)
   {
     struct pollfd fds[3];
@@ -99,7 +102,7 @@ void enocean_to_hue_bridge::run_poll_loop()
       fds[cnt].revents = 0;
       ++cnt;
     }
-    auto res = poll(fds, cnt, -1);
+    auto res = poll(fds, cnt, 600000);  // wake up at least every 5min
     if (res < 0) {
       if (errno == EINTR || errno == EAGAIN)
         continue; // interrupted by signal or out of resources, retry
@@ -118,6 +121,13 @@ void enocean_to_hue_bridge::run_poll_loop()
     if (cnt > 1 && fds[1].revents)
       cmd_.poll();
 #endif
+    time_t curtime;
+    time(&curtime);
+    if (curtime - starttime >= 3600 && res == 0)
+    {
+      syslog(LOG_INFO, "EnOcean child process auto-restart at %ld", curtime);
+      _exit(0);
+    }
   }
 }
 
