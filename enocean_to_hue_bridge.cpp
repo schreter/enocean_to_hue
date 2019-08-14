@@ -192,21 +192,26 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
     // from the same switch. Nobody is going to press the switch that fast :-).
     auto res = command_states_.emplace(addr, std::make_pair(ts, id));
     bool do_send = false;
+    int64_t last_ts = 0;
+    int32_t last_id = -1;
     if (res.second) {
       // new entry
       do_send = true;
     } else {
       // check ID or time difference
-      auto last_id = res.first->second.second;
-      auto last_ts = res.first->second.first;
+      auto& data = res.first->second;
+      last_id = data.second;
+      last_ts = data.first;
       if (uint64_t(ts - last_ts) >= 200 || last_id != id) {
         do_send = true;
       }
-      res.first->second.second = last_id;
-      res.first->second.first = ts;
+      data.second = id;
+      data.first = ts;
     }
     if (do_send) {
-      syslog(LOG_INFO, "EnOcean post command: %d, group %d", value, group);
+      syslog(LOG_INFO,
+          "EnOcean post command: %d (last %d), group %d, ts %lld (last %lld, diff %lld)",
+          value, last_id, group, ts, last_ts, ts - last_ts);
       cmd_.post(id, 0);
     }
 #endif
