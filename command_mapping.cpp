@@ -59,7 +59,7 @@ uint32_t command_mapping::map(const enocean_event& e)
   return 0;
 }
 
-void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t group)
+void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t bridge_set)
 {
   if (!value)
     throw std::runtime_error("Value must be specified");
@@ -68,11 +68,11 @@ void command_mapping::add_mapping(enocean_id id, int8_t button, int32_t value, u
 
   if (button < 0) {
     for (button = ((button == -2) ? 0 : 1); button <= 8; ++button)
-      add_mapping(id, button, value + button, group);
+      add_mapping(id, button, value + button, bridge_set);
     return;
   }
-  mapping_.emplace(std::make_pair(id, button), uint32_t(value) | group);
-  printf("Added mapping for %x: %d -> %d/%u\n", ntohl(id.raw()), button, value, group);
+  mapping_.emplace(std::make_pair(id, button), uint32_t(value) | bridge_set);
+  printf("Added mapping for %x: %d -> %d/%x\n", ntohl(id.raw()), button, value, bridge_set >> 24);
 }
 
 void command_mapping::load(const char* filename)
@@ -81,18 +81,29 @@ void command_mapping::load(const char* filename)
   if (!infile.is_open())
     throw std::runtime_error("Cannot open mapping file");
   std::string line;
-  uint32_t group = 0;
+  uint32_t bridge_set = 1U << 24; // defaults to single bridge #0
   while (std::getline(infile, line)) {
     if (line.length() == 0 || line[0] == '#')
       continue;
     unsigned a, b, c, d;
     int button, value;
     auto str = line.c_str();
-    uint32_t new_group;
-    if (1 == sscanf(str, "group %u", &new_group))
+    uint32_t br[8];
+    int count;
+    if ((count = sscanf(str, "bridge %u %u %u %u %u %u %u %u",
+                        &br[0], &br[1], &br[2], &br[3], &br[4], &br[5], &br[6], &br[7])) > 0)
     {
-      // group set
-      group = new_group << 24;
+      // new bridge set
+      uint32_t new_bridge_set = 0;
+      for (uint32_t i = 0; i < uint32_t(count); ++i) {
+        if (br[i] == 0 || br[i] > 8)
+          throw std::runtime_error("Expected bridge number to be between 1 and 8");
+        uint32_t bit = uint32_t(1) << (23 + br[i]);
+        if (new_bridge_set & bit)
+            throw std::runtime_error("Expected bridge numbers to be unique");
+        new_bridge_set |= bit;
+      }
+      bridge_set = new_bridge_set;
       continue;
     }
     auto res = sscanf(str, "%x:%x:%x:%x %d %d", &a, &b, &c, &d, &button, &value);
@@ -104,6 +115,6 @@ void command_mapping::load(const char* filename)
       throw std::runtime_error("Button ID must be in range [-2,8]");
     enocean_id id;
     id.set(uint8_t(a), uint8_t(b), uint8_t(c), uint8_t(d));
-    add_mapping(id, int8_t(button), value, group);
+    add_mapping(id, int8_t(button), value, bridge_set);
   }
 }

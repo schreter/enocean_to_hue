@@ -22,10 +22,8 @@
 #include <cstdio>
 #include <cstring>
 
-void hue_sensor_command::post(int32_t value, uint32_t group)
+void hue_sensor_command::post(int32_t value)
 {
-  if (own_group_ >= 0 && group != uint32_t(own_group_))
-    return;
   if (queue_size_ == MAX_QUEUE_SIZE) {
     // drop the oldest
     memmove(&queue_[0], &queue_[1], sizeof(queue_[0]) * (MAX_QUEUE_SIZE - 1));

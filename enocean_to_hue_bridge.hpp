@@ -28,6 +28,7 @@
 #include "command_mapping.hpp"
 
 #include <map>
+#include <deque>
 
 /*!
  * @brief Bridge to translate Enocean sensors to Hue bridge's internal sensor.
@@ -38,11 +39,8 @@ public:
   /// Construct the bridge object.
   enocean_to_hue_bridge(
       const char* port,
-      uint32_t bridge_ip,
-      const char* api_key,
-      int sensor_id,
-      const char* map_file,
-      int group_id);
+      std::deque<hue_sensor_command_posix>& bridges,
+      const char* map_file);
 
   /// Run poll loop forever.
   [[noreturn]] void run_poll_loop();
@@ -67,11 +65,9 @@ private:
   void proxy_poll();
 
   command_mapping map_;
-  hue_sensor_command_posix cmd_;
+  std::deque<hue_sensor_command_posix>& bridges_;
   handler hnd_;
   std::map<int32_t, std::pair<hue_sensor_command::timestamp_t, int32_t>> command_states_;
-  const int own_group_ = -1;
   int proxy_server_fd_ = -1;
   unsigned long total_event_count_ = 0;
-  unsigned long our_event_count_ = 0;
 };

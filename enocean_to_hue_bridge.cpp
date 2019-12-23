@@ -19,7 +19,7 @@
 
 #include "enocean_to_hue_bridge.hpp"
 
-// Define to prevent answering proxy calls and handle only own group ID.
+// Define to prevent answering proxy calls and handle only local data.
 //#define NO_PROXY
 
 #include <system_error>
@@ -30,14 +30,10 @@
 
 enocean_to_hue_bridge::enocean_to_hue_bridge(
     const char* port,
-    uint32_t bridge_ip,
-    const char* api_key,
-    int sensor_id,
-    const char* map_file,
-    int group_id) :
-  cmd_(bridge_ip, api_key, sensor_id, -1),
-  hnd_(port, *this),
-  own_group_(group_id)
+    std::deque<hue_sensor_command_posix>& bridges,
+    const char* map_file) :
+  bridges_(bridges),
+  hnd_(port, *this)
 {
   map_.load(map_file);
 #ifndef NO_PROXY
@@ -85,7 +81,7 @@ void enocean_to_hue_bridge::run_poll_loop()
   syslog(LOG_INFO, "EnOcean child process start time %ld", starttime);
   for (;;)
   {
-    struct pollfd fds[3];
+    struct pollfd fds[11];
     nfds_t cnt = 1;
     fds[0].fd = hnd_.get_fd();
     fds[0].events = POLLERR | POLLIN;
@@ -96,11 +92,13 @@ void enocean_to_hue_bridge::run_poll_loop()
     fds[1].revents = 0;
     ++cnt;
 #endif
-    fds[cnt].fd = cmd_.get_fd();
-    if (fds[cnt].fd >= 0) {
-      fds[cnt].events = cmd_.get_events() | POLLERR;
-      fds[cnt].revents = 0;
-      ++cnt;
+    for (auto& b : bridges_) {
+      fds[cnt].fd = b.get_fd();
+      if (fds[cnt].fd >= 0) {
+        fds[cnt].events = b.get_events() | POLLERR;
+        fds[cnt].revents = 0;
+        ++cnt;
+      }
     }
     auto res = poll(fds, cnt, 600000);  // wake up at least every 5min
     if (res < 0) {
@@ -112,15 +110,17 @@ void enocean_to_hue_bridge::run_poll_loop()
     }
     if (fds[0].revents)
       hnd_.poll();
+    cnt = 1;
 #ifndef NO_PROXY
     if (fds[1].revents)
       proxy_poll();
-    if (cnt > 2 && fds[2].revents)
-      cmd_.poll();
-#else
-    if (cnt > 1 && fds[1].revents)
-      cmd_.poll();
+    ++cnt;
 #endif
+    for (auto& b : bridges_) {
+      if (fds[cnt].revents)
+        b.poll();
+      ++cnt;
+    }
     time_t curtime;
     time(&curtime);
     if (curtime - starttime >= 3600 && res == 0)
@@ -171,28 +171,27 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
   }
 
   auto value = map_.map(event);
-  auto group = value >> 24;
+  auto bridge_set = value >> 24;
   value &= 0xffffff;
 
   char data[128];
   hexdump(data, sizeof(data), &event.buffer, event.hdr.total_size());
 
   ++total_event_count_;
-  if (own_group_ == int32_t(group))
-    ++our_event_count_;
   auto ip_addr = reinterpret_cast<const unsigned char*>(&remote_ip);
   auto dbm = event.erp1.contact_event.subtel[0].dbm;
-  auto ts = cmd_.timestamp();
+  auto ts = bridges_[0].timestamp();
   syslog(LOG_INFO,
-      "EnOcean event, addr %x, button %d => ID %d@%d/%d, RSSI -%u, index %lu/%lu, ts %lld, source %u.%u.%u.%u, data %s",
-      addr, button, value, group, cmd_.get_group_id(), dbm, our_event_count_, total_event_count_,
+      "EnOcean event, addr %x, button %d => ID %d@%x, RSSI -%u, index %lu, ts %lld, source %u.%u.%u.%u, data %s",
+      addr, button, value, bridge_set, dbm, total_event_count_,
       ts, ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], data);
 
   //printf("\aGot event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
+  bool do_send = false;
   if (value) {
 #ifdef NO_PROXY
-    syslog(LOG_INFO, "EnOcean post command: %d, group %d", value, group);
-    cmd_.post(value, group);
+    syslog(LOG_INFO, "EnOcean post command: %d, bridge set %x", value, bridge_set);
+    do_send = true;
 #else
     auto id = int32_t(value);
     // The same command can be received by multiple receivers. So we are posting only
@@ -201,7 +200,6 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
     // 200 ms time difference to out filter duplicates. This gives us 5 commands/second
     // from the same switch. Nobody is going to press the switch that fast :-).
     auto res = command_states_.emplace(addr, std::make_pair(ts, id));
-    bool do_send = false;
     int64_t last_ts = 0;
     int32_t last_id = -1;
     if (res.second) {
@@ -218,13 +216,19 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
       data.second = id;
       data.first = ts;
     }
+#endif
     if (do_send) {
       syslog(LOG_INFO,
-          "EnOcean post command: %d (last %d), group %d, ts %lld (last %lld, diff %lld)",
-          value, last_id, group, ts, last_ts, ts - last_ts);
-      cmd_.post(id, 0);
+          "EnOcean post command: %d (last %d), bridge set %x, ts %lld (last %lld, diff %lld)",
+          value, last_id, bridge_set, ts, last_ts, ts - last_ts);
+
+      uint32_t bit = 1;
+      for (auto& b : bridges_) {
+        if (bridge_set & bit)
+          b.post(id);
+        bit <<= 1;
+      }
     }
-#endif
   }
 }
 

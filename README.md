@@ -6,16 +6,20 @@ by setting a virtual sensor in Philips Hue bridge to a specified value.
 This way, it is possible to integrate for instance Eltako switches to
 control Philips Hue lightning system.
 
+The program also supports multiple Hue bridges as destination of commands,
+even sending the same command to multiple bridges.
+
+
 ## Invocation
 
-`enocean_to_hue <usb300 port> <bridge IP> <API key> <sensor ID> <mapping file>`
+`enocean_to_hue <usb300 port> <mapping file> <bridge IP> <API key> <sensor ID> [<bridge IP> <API key> <sensor ID>]...`
 
 Parameters:
    - `<usb300 port>` - USB300 Enocean USB stick serial port (typically /dev/ttyUSBx)
+   - `<mapping file>` - file with mappings of switches/sensors to a value
    - `<bridge IP>` - IP address of Philips Hue bridge
    - `<API key>` - API key of the Hue bridge (see https://developers.meethue.com/develop/get-started-2/)
    - `<sensor ID>` - ID of a sensor to which post the state
-   - `<mapping file>` - file with mappings of switches/sensors to a value
 
 ## Syntax of the mapping file
 
@@ -23,6 +27,7 @@ The mapping file is parsed as text lines:
    - lines starting with '#' are treated as comments
    - empty lines are ignored
    - `<device id> <button> <state>` - set a mapping for a device's button
+   - `bridge <index> [<index>]...` - set bridge indices which will get following commands
 
 Button numbers:
    - 0 - release of a button
@@ -42,6 +47,9 @@ The mapping can also contain special button numbers:
 
 Example mapping file:
 ```
+# send commands to bridge 1
+bridge 1
+
 # living room switch - map buttons 1-8 to 11-18
 fe:f2:37:a3 -1 10
 
@@ -57,4 +65,9 @@ fe:f1:7b:67 -2 30
 # bathroom door contact
 01:c5:e2:89 0 1000	# open
 01:c5:e2:89 1 1001	# closed
+
+# all-off command sent to multiple bridges
+bridge 1 2
+fe:f1:7b:33 1 99
 ```
+

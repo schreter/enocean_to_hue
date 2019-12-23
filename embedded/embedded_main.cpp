@@ -35,16 +35,9 @@
 #include "enocean_serial_esp8266.hpp"
 #include "debug.hpp"
 #include "embedded_syslog.hpp"
-#ifdef DIRECT_CONNECT
-#include "hue_sensor_command_embedded.hpp"
-#else
-#define PROXY_CONNECT
-#endif
-#ifdef PROXY_CONNECT
 extern "C" {
   #include "lwip/udp.h"
 }
-#endif
 
 /// Debug activated
 bool s_debug = false;
@@ -156,13 +149,7 @@ void loop()
   static long led_on_time = 0;
   static long last_dot_time = millis();
   static uint32_t total_event_count = 0;
-#ifdef DIRECT_CONNECT
-  static hue_sensor_command_embedded command(bridge, api_key, sensor_id);
-  static uint32_t our_event_count = 0;
-#endif
-#ifdef PROXY_CONNECT
   static udp_pcb* master_conn = nullptr;
-#endif
   static enocean_serial_esp serial(
       [](const enocean_event& event) {
         led_off_time = set_led(millis(), 100);
@@ -184,25 +171,6 @@ void loop()
           debug_stream::instance() << F("Received EnOcean event, addr ") <<
               showbase << hex << addr << dec << F(", button ") << button <<
               F(", index ") << total_event_count;
-#ifdef DIRECT_CONNECT
-        auto id = map_action(addr, button);
-        auto group = id >> 24;
-        id &= 0xffffff;
-        if (group == command.get_group_id())
-          ++our_event_count;
-        syslog_P(LOG_INFO, PSTR("EnOcean event, addr %lx, button %d => ID %ld@%ld/%ld, RSSI -%u, index %lu/%lu"),
-                 addr, button, id, group, command.get_group_id(), event.erp1.contact_event.subtel[0].dbm,
-                our_event_count, total_event_count);
-        if (id) {
-          if (s_debug)
-            debug_stream::instance() << F(" => action ") << id << '@' << group << '?' << command.get_group_id() << '\n';
-          command.post(id, group);
-        } else {
-          if (s_debug)
-            debug_stream::instance() << F(" => no known action\n");
-        }
-#endif
-#ifdef PROXY_CONNECT
         if (!master_conn) {
           // prepare UDP connection
           master_conn = udp_new_ip_type(IPADDR_TYPE_V4);
@@ -244,7 +212,6 @@ void loop()
 
         syslog_P(LOG_INFO, PSTR("EnOcean event, addr %lx, button %d, RSSI -%u"),
                  addr, button, event.erp1.contact_event.subtel[0].dbm);
-#endif
       }
     );
 
@@ -266,15 +233,9 @@ void loop()
     debug_stream::instance() << F("\nWiFi connected, IP address: ") <<
         int(ip[0]) << '.' << int(ip[1]) << '.' << int(ip[2]) << '.' << int(ip[3]) <<
         F(", RSSI=") << WiFi.RSSI() << F(", SSID=") << real_ssid << '\n';
-#ifdef DIRECT_CONNECT
-    // Use last octet of IP as group ID.
-    command.set_group_id(ip[3]);
-#endif
-#ifdef PROXY_CONNECT
     if (master_conn)
       udp_remove(master_conn);
     master_conn = nullptr;
-#endif
     digitalWrite(LED_BUILTIN, HIGH);
     syslog_P(LOG_INFO, PSTR("EnOcean WiFi connected, RSSI=%ld, SSID=%s"), WiFi.RSSI(), real_ssid);
     led_off_time = led_on_time = 0;
@@ -306,9 +267,6 @@ void loop()
 
   // now process events
   serial.poll();
-#ifdef DIRECT_CONNECT
-  command.poll();
-#endif
   ArduinoOTA.handle();
 }
 

@@ -46,9 +46,9 @@ public:
    * @param button button pressed to map (1-8; 0 for release, -1 for all
    *    buttons as value + button, -2 as -1 + button release as value).
    * @param value value to send for the button.
-   * @param group group to set for the button (high 8 bits).
+   * @param bridge_set set of bridges to send button value to (high 8 bits, as bitmask).
    */
-  void add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t group);
+  void add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t bridge_set);
 
   /*!
    * @brief Load mappings from a file.

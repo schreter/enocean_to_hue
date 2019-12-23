@@ -66,16 +66,15 @@ public:
    * @param ip IP address of the bride.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
-   * @param group group for which to post to bridge.
    *
    * The command handler PUTs to the Sensor URL in form
    * <tt>http://&lt;ip&gt;/api/&lt;api_key&gt;/sensors/&lt;sensor_id&gt;</tt>.
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  explicit hue_sensor_command(uint32_t ip, const char* api_key, int sensor_id, int32_t group) noexcept
+  explicit hue_sensor_command(uint32_t ip, const char* api_key, int sensor_id) noexcept
   {
-    reinit(ip, api_key, sensor_id, group);
+    reinit(ip, api_key, sensor_id);
   }
 
   /*!
@@ -84,19 +83,17 @@ public:
    * @param ip IP address of the bride.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
-   * @param group group for which to post to bridge.
    *
    * The command handler PUTs to the Sensor URL in form
    * <tt>http://&lt;ip&gt;/api/&lt;api_key&gt;/sensors/&lt;sensor_id&gt;</tt>.
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  void reinit(uint32_t ip, const char* api_key, int sensor_id, int32_t group) noexcept
+  void reinit(uint32_t ip, const char* api_key, int sensor_id) noexcept
   {
     ip_ = ip;
     api_key_ = api_key;
     sensor_id_ = sensor_id;
-    own_group_ = group;
   }
 
   virtual ~hue_sensor_command() noexcept {}
@@ -109,18 +106,11 @@ public:
    * by the bridge in time.
    *
    * @param value value to post.
-   * @param group command group.
    */
-  void post(int32_t value, uint32_t group);
+  void post(int32_t value);
 
   /// Process events on file descriptor.
   virtual void poll() = 0;
-
-  /// Get group ID used for this command handler.
-  int32_t get_group_id() const noexcept { return own_group_; }
-
-  /// Set group ID on which to react.
-  void set_group_id(int32_t id) noexcept { own_group_ = id; }
 
   /// Get current timestamp.
   virtual timestamp_t timestamp() noexcept = 0;
@@ -201,6 +191,4 @@ private:
 
   /// Current state of the connection.
   state state_ = state::idle;
-  /// Own group which to accept for this command handler.
-  int32_t own_group_;
 };

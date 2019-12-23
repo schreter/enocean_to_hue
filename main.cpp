@@ -32,41 +32,55 @@ static int64_t timestamp() noexcept
   return tp.tv_nsec / 1000000 + tp.tv_sec * 1000;
 }
 
+static void usage(const char* name)
+{
+  std::cerr << "Usage: " << name <<
+      " <usb300 port> <mapping file> <bridge IP> <API key> <sensor ID> [<bridge IP> <API key> <sensor ID>]...\n";
+}
+
 int main(int argc, const char** argv)
 {
-  if (argc != 7) {
-    std::cerr << "Usage: " << argv[0] <<
-        " <usb300 port> <bridge IP> <API key> <sensor ID> <mapping file> <group ID>\n";
+  auto progname = argv[0];
+  if (argc < 6) {
+    usage(progname);
     return 1;
   }
-  int sensor_id;
-  {
+  const char* serial_port = argv[1];
+  const char* config_file = argv[2];
+  argv += 3;
+  argc -= 3;
+  std::deque<hue_sensor_command_posix> bridges;
+  while (argc >= 3) {
+    if (bridges.size() == 8) {
+      std::cerr << "At most 8 bridges are supported\n";
+      usage(progname);
+      return 1;
+    }
+    struct in_addr bridge_addr;
+    if (!inet_aton(argv[0], &bridge_addr)) {
+      std::cerr << "Cannot parse bridge IP address '" << argv[0] << "'\n";
+      usage(progname);
+      return 1;
+    }
+    int sensor_id;
     char* end;
-    auto id = strtol(argv[4], &end, 10);
-    if (end == argv[4] || *end || id < 1 || id > 63) {
-      std::cerr << "Specified sensor ID '" << argv[4] <<
+    auto id = strtol(argv[2], &end, 10);
+    if (end == argv[2] || *end || id < 1 || id > 63) {
+      std::cerr << "Specified sensor ID '" << argv[2] <<
           "' is invalid. Expected ID in range [1,63].\n";
+      usage(progname);
       return 1;
     }
     sensor_id = int(id);
+    bridges.emplace_back(bridge_addr.s_addr, argv[1], sensor_id);
+    argv += 3;
+    argc -= 3;
   }
-  int group_id;
+  if (argc != 0)
   {
-    char* end;
-    auto id = strtol(argv[6], &end, 10);
-    if (end == argv[6] || *end || id < -1 || id > 255) {
-      std::cerr << "Specified group ID '" << argv[6] <<
-          "' is invalid. Expected ID in range [-1,255].\n";
-      return 1;
-    }
-    group_id = int(id);
-  }
-  struct in_addr bridge_addr;
-  {
-    if (!inet_aton(argv[2], &bridge_addr)) {
-      std::cerr << "Cannot parse bridge IP address '" << argv[2] << "'\n";
-      return 1;
-    }
+    std::cerr << "Extraneous argument(s) on the command line\n";
+    usage(progname);
+    return 1;
   }
 
   setlogmask(LOG_UPTO(LOG_INFO));
@@ -79,9 +93,9 @@ int main(int argc, const char** argv)
     auto pid = fork();
     if (!pid) {
       // child process, run the bridge
-      openlog("enocean_to_hue", LOG_CONS | LOG_PID, LOG_LOCAL1);
+      openlog("enocean_to_hue", LOG_CONS | LOG_PID | LOG_PERROR, LOG_LOCAL1);
       try {
-        enocean_to_hue_bridge bridge(argv[1], bridge_addr.s_addr, argv[3], sensor_id, argv[5], group_id);
+        enocean_to_hue_bridge bridge(serial_port, bridges, config_file);
         bridge.run_poll_loop();
       } catch (std::exception& e) {
         syslog(LOG_ERR, "EnOcean ERROR: %s", e.what());
