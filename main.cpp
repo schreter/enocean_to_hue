@@ -65,9 +65,9 @@ int main(int argc, const char** argv)
     int sensor_id;
     char* end;
     auto id = strtol(argv[2], &end, 10);
-    if (end == argv[2] || *end || id < 1 || id > 63) {
+    if (end == argv[2] || *end || id < 1 || id > 255) {
       std::cerr << "Specified sensor ID '" << argv[2] <<
-          "' is invalid. Expected ID in range [1,63].\n";
+          "' is invalid. Expected ID in range [1,255].\n";
       usage(progname);
       return 1;
     }
