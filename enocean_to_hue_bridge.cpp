@@ -170,9 +170,9 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
       break;
   }
 
-  auto value = map_.map(event);
-  auto bridge_set = value >> 24;
-  value &= 0xffffff;
+  auto mapping = map_.map(event);
+  auto id = mapping.first;
+  auto bridge_set = mapping.second;
 
   char data[128];
   hexdump(data, sizeof(data), &event.buffer, event.hdr.total_size());
@@ -183,17 +183,16 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
   auto ts = bridges_[0].timestamp();
   syslog(LOG_INFO,
       "EnOcean event, addr %x, button %d => ID %d@%x, RSSI -%u, index %lu, ts %lld, source %u.%u.%u.%u, data %s",
-      addr, button, value, bridge_set, dbm, total_event_count_,
+      addr, button, id, bridge_set, dbm, total_event_count_,
       ts, ip_addr[0], ip_addr[1], ip_addr[2], ip_addr[3], data);
 
   //printf("\aGot event %d, type=%d: %s", ++count, int(event.hdr.packet_type), data);
   bool do_send = false;
-  if (value) {
+  if (id) {
 #ifdef NO_PROXY
     syslog(LOG_INFO, "EnOcean post command: %d, bridge set %x", value, bridge_set);
     do_send = true;
 #else
-    auto id = int32_t(value);
     // The same command can be received by multiple receivers. So we are posting only
     // in case enough time has passed since the occurrence of the same command.
     // Typically, all commands arrive within a millisecond or so, so let's test for
@@ -220,7 +219,7 @@ void enocean_to_hue_bridge::handle_event(const enocean_event& event, uint32_t re
     if (do_send) {
       syslog(LOG_INFO,
           "EnOcean post command: %d (last %d), bridge set %x, ts %lld (last %lld, diff %lld)",
-          value, last_id, bridge_set, ts, last_ts, ts - last_ts);
+          id, last_id, bridge_set, ts, last_ts, ts - last_ts);
 
       uint32_t bit = 1;
       for (auto& b : bridges_) {

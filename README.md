@@ -44,6 +44,12 @@ The mapping can also contain special button numbers:
    - -1 to map all button numbers 1-8 to specified value + button number
    - -2 to map all button numbers 0-8 (i.e., also button release event)
      to specified value + button number
+   - -3 to map all button numbers 1-8 to specified value + button number
+     and to map button release to negative value + button number
+
+State to set must be positive integer, except for button 0, where state -1 is allowed
+(in this case, the state set is the negated value of the last button pressed, i.e.,
+you can detect release of the button).
 
 Example mapping file:
 ```

@@ -22,6 +22,7 @@
 #include "embedded/enocean.hpp"
 
 #include <map>
+#include <limits>
 
 /*!
  * @brief Command mapping class from Enocean events to Hue sensor value.
@@ -35,9 +36,10 @@ public:
    * @brief Map an event to a value.
    *
    * @param e received event.
-   * @return command value to send to Hue bridge or 0 if no mapping.
+   * @return pair of command value to send to Hue bridge (or 0 if no mapping)
+   *    and bridge set with bridge bitmask.
    */
-  uint32_t map(const enocean_event& e);
+  std::pair<int32_t, uint8_t> map(const enocean_event& e);
 
   /*!
    * @brief Add a new mapping.
@@ -46,9 +48,9 @@ public:
    * @param button button pressed to map (1-8; 0 for release, -1 for all
    *    buttons as value + button, -2 as -1 + button release as value).
    * @param value value to send for the button.
-   * @param bridge_set set of bridges to send button value to (high 8 bits, as bitmask).
+   * @param bridge_set set of bridges to send button value to (as bitmask).
    */
-  void add_mapping(enocean_id id, int8_t button, int32_t value, uint32_t bridge_set);
+  void add_mapping(enocean_id id, int8_t button, int32_t value, uint8_t bridge_set);
 
   /*!
    * @brief Load mappings from a file.
@@ -71,6 +73,11 @@ public:
   void load(const char* filename);
 
 private:
+  /// Special mapping to indicate button release event.
+  static constexpr int32_t RELEASE = std::numeric_limits<int32_t>::min();
+
   /// Mapping to use.
-  std::map<std::pair<enocean_id, uint8_t>, uint32_t> mapping_;
+  std::map<std::pair<enocean_id, uint8_t>, std::pair<int32_t, uint8_t>> mapping_;
+  /// Last value sent for ID (to use for RELEASE events).
+  std::map<enocean_id, int32_t> last_value_;
 };
