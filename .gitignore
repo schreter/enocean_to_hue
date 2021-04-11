@@ -11,10 +11,11 @@
 *.gch
 *.pch
 
-# Compiled Dynamic libraries
+# Compiled Dynamic libraries and bins
 *.so
 *.dylib
 *.dll
+enocean_to_hue
 
 # Fortran module files
 *.mod
@@ -34,3 +35,8 @@
 # IDE settigs
 *.user
 
+# CMake stuff
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake

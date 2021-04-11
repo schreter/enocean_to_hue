@@ -1,3 +1,5 @@
-user_config.hpp
+.vscode
+.pio
+include/user_config.hpp
 user_config.conf
-user_config_map.hpp
+include/user_config_map.hpp

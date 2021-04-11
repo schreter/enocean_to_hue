@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include "embedded/enocean_serial.hpp"
+#include "enocean_serial.hpp"
 
 class enocean_serial_posix : public enocean_serial
 {

@@ -116,7 +116,7 @@ void setup()
   // Debug serial, TX on D4, connected to TX pin for debug via USB serial adapter
   // Setting TX pin to input allows connecting D4 to TX to get debug output
   // via USB console.
-  pinMode(TX, INPUT);
+  pinMode(1 /*TX*/, INPUT);
   Serial1.begin(115200);
   Serial1.println();
 #else

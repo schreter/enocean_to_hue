@@ -17,7 +17,7 @@
  * This copyright notice MUST APPEAR in all copies of the software!
  */
 
-#include "embedded/debug.hpp"
+#include "debug.hpp"
 
 #include <iostream>
 

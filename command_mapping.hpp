@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "embedded/enocean.hpp"
+#include "enocean.hpp"
 
 #include <map>
 #include <limits>

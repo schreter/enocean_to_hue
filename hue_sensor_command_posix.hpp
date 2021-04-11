@@ -23,7 +23,7 @@
  */
 #pragma once
 
-#include "embedded/hue_sensor_command.hpp"
+#include "hue_sensor_command.hpp"
 
 class hue_sensor_command_posix : public hue_sensor_command
 {

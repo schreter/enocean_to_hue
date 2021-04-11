@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++11 -Wall")
 project(enocean_to_hue)
+include_directories("${CMAKE_SOURCE_DIR}/embedded/include")
 add_executable(${PROJECT_NAME}
   # POSIX sources
   main.cpp
@@ -10,13 +11,13 @@ add_executable(${PROJECT_NAME}
   hue_sensor_command_posix.cpp
   debug_posix.cpp
   # Common sources
-  embedded/crc8.cpp
-  embedded/enocean_serial.cpp
-  embedded/hue_sensor_command.cpp
+  embedded/src/crc8.cpp
+  embedded/src/enocean_serial.cpp
+  embedded/src/hue_sensor_command.cpp
   # Embedded-only sources
-  embedded/embedded_main.cpp
-  embedded/enocean_serial_esp8266.cpp
-  embedded/debug_stream_embedded.cpp
-  embedded/hue_sensor_command_embedded.cpp
-  embedded/embedded_syslog.cpp
+  embedded/src/embedded_main.cpp
+  embedded/src/enocean_serial_esp8266.cpp
+  embedded/src/debug_stream_embedded.cpp
+  embedded/src/hue_sensor_command_embedded.cpp
+  embedded/src/embedded_syslog.cpp
 )
