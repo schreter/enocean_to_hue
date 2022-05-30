@@ -12,7 +12,7 @@ even sending the same command to multiple bridges.
 
 ## Invocation
 
-`enocean_to_hue <usb300 port> <mapping file> <bridge IP> <API key> <sensor ID> [<bridge IP> <API key> <sensor ID>]...`
+`enocean_to_hue <usb300 port> <mapping file> <bridge IP> <bridge port> <API key> <sensor ID> [<bridge IP> <bridge port> <API key> <sensor ID>]...`
 
 Parameters:
    - `<usb300 port>` - USB300 Enocean USB stick serial port (typically /dev/ttyUSBx)

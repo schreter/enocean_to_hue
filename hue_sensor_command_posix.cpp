@@ -139,7 +139,7 @@ bool hue_sensor_command_posix::start_connect()
   struct sockaddr_in addr;
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
-  addr.sin_port = htons(80);
+  addr.sin_port = htons(static_cast<uint16_t>(port_));
   addr.sin_addr.s_addr = ip_;
   if (connect(fd_, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) < 0) {
     if (errno != EINPROGRESS)

@@ -35,7 +35,7 @@ static int64_t timestamp() noexcept
 static void usage(const char* name)
 {
   std::cerr << "Usage: " << name <<
-      " <usb300 port> <mapping file> <bridge IP> <API key> <sensor ID> [<bridge IP> <API key> <sensor ID>]...\n";
+      " <usb300 port> <mapping file> <bridge IP> <bridge port> <API key> <sensor ID> [<bridge IP> <bridge port> <API key> <sensor ID>]...\n";
 }
 
 int main(int argc, const char** argv)
@@ -50,7 +50,7 @@ int main(int argc, const char** argv)
   argv += 3;
   argc -= 3;
   std::deque<hue_sensor_command_posix> bridges;
-  while (argc >= 3) {
+  while (argc >= 4) {
     if (bridges.size() == 8) {
       std::cerr << "At most 8 bridges are supported\n";
       usage(progname);
@@ -62,19 +62,27 @@ int main(int argc, const char** argv)
       usage(progname);
       return 1;
     }
+    char *end;
+    int bridge_port = strtol(argv[1], &end, 10);
+    if (end == argv[1] || *end || bridge_port < 1 || bridge_port > 65535) {
+      std::cerr << "Specified port number '" << argv[1] <<
+          "' is invalid. Expected port in range [1,65535].\n";
+      usage(progname);
+      return 1;
+
+    }
     int sensor_id;
-    char* end;
-    auto id = strtol(argv[2], &end, 10);
-    if (end == argv[2] || *end || id < 1 || id > 255) {
-      std::cerr << "Specified sensor ID '" << argv[2] <<
+    auto id = strtol(argv[3], &end, 10);
+    if (end == argv[3] || *end || id < 1 || id > 255) {
+      std::cerr << "Specified sensor ID '" << argv[3] <<
           "' is invalid. Expected ID in range [1,255].\n";
       usage(progname);
       return 1;
     }
     sensor_id = int(id);
-    bridges.emplace_back(bridge_addr.s_addr, argv[1], sensor_id);
-    argv += 3;
-    argc -= 3;
+    bridges.emplace_back(bridge_addr.s_addr, bridge_port, argv[2], sensor_id);
+    argv += 4;
+    argc -= 4;
   }
   if (argc != 0)
   {

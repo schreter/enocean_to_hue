@@ -137,7 +137,7 @@ bool hue_sensor_command_embedded::start_connect()
 
   connect_time_ = millis();
   report_time_ = 500; // give some time for proper request handling initially
-  auto err = tcp_connect(pcb_, reinterpret_cast<const ip_addr_t*>(&ip_), 80, connection_established);
+  auto err = tcp_connect(pcb_, reinterpret_cast<const ip_addr_t*>(&ip_), htons(static_cast<uint64_t>(port_)), connection_established);
   if (err != ERR_OK) {
     syslog_P(LOG_ERR, PSTR("EnOcean OUT OF MEMORY on connect()"));
     tcp_abort(pcb_);
@@ -206,6 +206,7 @@ err_t hue_sensor_command_embedded::data_received(void* arg, tcp_pcb* tpcb, pbuf*
     }
     tcp_recved(tpcb, p->len);
   }
+  return ERR_OK;
 }
 
 #endif

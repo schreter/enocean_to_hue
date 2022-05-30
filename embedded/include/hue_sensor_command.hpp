@@ -64,6 +64,7 @@ public:
    * @brief Construct command hander to send commands to the Hue bridge via a sensor.
    *
    * @param ip IP address of the bride.
+   * @param port port of the bridge.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
    *
@@ -72,15 +73,16 @@ public:
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  explicit hue_sensor_command(uint32_t ip, const char* api_key, int sensor_id) noexcept
+  explicit hue_sensor_command(uint32_t ip, int port, const char* api_key, int sensor_id) noexcept
   {
-    reinit(ip, api_key, sensor_id);
+    reinit(ip, port, api_key, sensor_id);
   }
 
   /*!
    * @brief Reinitialize command hander to send commands to the Hue bridge via a sensor.
    *
    * @param ip IP address of the bride.
+   * @param port port of the bridge.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
    *
@@ -89,9 +91,10 @@ public:
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  void reinit(uint32_t ip, const char* api_key, int sensor_id) noexcept
+  void reinit(uint32_t ip, int port, const char* api_key, int sensor_id) noexcept
   {
     ip_ = ip;
+    port_ = port;
     api_key_ = api_key;
     sensor_id_ = sensor_id;
   }
@@ -168,6 +171,8 @@ protected:
 
   /// Remote IP address.
   uint32_t ip_;
+  /// Remote port.
+  int port_;
   /// API key.
   const char* api_key_;
   /// Sensor ID to post to.

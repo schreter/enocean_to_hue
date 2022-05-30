@@ -32,6 +32,7 @@ public:
    * @brief Construct command hander to send commands to the Hue bridge via a sensor.
    *
    * @param ip IP address of the bride.
+   * @param port port of the bridge.
    * @param api_key API key assigned by the bridge.
    * @param sensor_id sensor ID assigned by the bridge.
    *
@@ -40,8 +41,8 @@ public:
    * It PUTs JSON document in the form:
    * <tt>{"state":{"status": &lt;value&gt;}}</tt>
    */
-  explicit hue_sensor_command_posix(uint32_t ip, const char* api_key, int sensor_id) noexcept :
-    hue_sensor_command(ip, api_key, sensor_id)
+  explicit hue_sensor_command_posix(uint32_t ip, int port, const char* api_key, int sensor_id) noexcept :
+    hue_sensor_command(ip, port, api_key, sensor_id)
   {}
 
   /// Get FD to poll on, if any.
